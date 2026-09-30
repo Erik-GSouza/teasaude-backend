@@ -8,6 +8,7 @@ async function conectarBanco() {
 
   } catch (erro) {
     console.error("Erro ao conectar:", erro.message);
+    throw erro;
   }
 }
 

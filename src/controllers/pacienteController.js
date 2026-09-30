@@ -1,5 +1,15 @@
 const Paciente = require("../models/Paciente");
 
+function formatarErrosValidacao(erro) {
+  const erros = {};
+
+  for (const campo in erro.errors) {
+    erros[campo] = erro.errors[campo].message;
+  }
+
+  return erros;
+}
+
 async function criarPaciente(req, res) {
 
   try {
@@ -8,15 +18,24 @@ async function criarPaciente(req, res) {
 
     return res.status(201).json({
       success: true,
-      mensagem: "Paciente cadastrado com sucesso!",
+      message: "Paciente cadastrado com sucesso!",
       data: paciente
     });
 
   } catch (erro) {
 
-    return res.status(400).json({
-      success: false,
-      message: erro.message
+    if (erro.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: "Dados inválidos",
+        errors: formatarErrosValidacao(erro)
+      });
+    }
+
+    console.error("Erro ao criar paciente:", erro);
+
+    return res.status(500).json({ success: false,
+      message: "Erro interno ao cadastrar paciente"
     });
 
   }
@@ -78,6 +97,34 @@ async function atualizarPaciente(req, res) {
   try {
     const { id } = req.params;
 
+    const camposPermitidos = [
+      "nomeCompleto",
+      "dataNascimento",
+      "nomeContato",
+      "telefoneContato",
+      "emailContato"];
+
+    const camposRecebidos = Object.keys(req.body);
+
+    if (camposRecebidos.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Nenhum campo foi informado para atualização"
+      });
+    }
+
+    const camposInvalidos = camposRecebidos.filter((campo) => !camposPermitidos.includes(campo));
+
+    if (camposInvalidos.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Há campos não permitidos na atualização",
+        errors: {
+          campos: camposInvalidos
+        }
+      });
+    }
+
     const paciente = await Paciente.findByIdAndUpdate(
       id,
       req.body,
@@ -101,10 +148,26 @@ async function atualizarPaciente(req, res) {
     });
 
   } catch (erro) {
-    return res.status(400).json({
-      success: false,
-      message: erro.message
+    if (erro.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: "Dados inválidos",
+        errors: formatarErrosValidacao(erro)
+      });
+    }
+
+     if (erro.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "ID inválido"
+      });
+    }
+
+    console.error("Erro ao atualizar paciente:", erro);
+    return res.status(500).json({success: false,
+      message: "Erro interno ao atualizar paciente"
     });
+
   }
 }
 

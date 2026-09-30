@@ -26,4 +26,18 @@ app.get("/", (req, res) => {
 
 app.use("/api/pacientes", pacienteRoutes);
 
+app.use((req, res) => {
+  return res.status(404).json({success: false, message: "Rota não encontrada"});
+});
+
+app.use((erro, req, res, next) => {
+  if (erro instanceof SyntaxError && erro.status === 400 && "body" in erro) {
+    return res.status(400).json({success: false, message: "JSON inválido"});
+  }
+
+  console.error("Erro não tratado:", erro);
+
+  return res.status(500).json({success: false, message: "Erro interno do servidor"});
+});
+
 module.exports = app;
