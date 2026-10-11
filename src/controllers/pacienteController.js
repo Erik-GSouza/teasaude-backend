@@ -1,27 +1,67 @@
 const Paciente = require("../models/Paciente");
 
-async function criarPaciente(req, res) {
+function dataCivilValida(valor) {
 
+  if (typeof valor !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    return false;
+  }
+
+  const [ano, mes, dia] = valor.split("-").map(Number);
+  const data = new Date(Date.UTC(ano, mes - 1, dia));
+
+  return (
+    data.getUTCFullYear() === ano &&
+    data.getUTCMonth() === mes - 1 &&
+    data.getUTCDate() === dia
+  );
+}
+
+
+async function criarPaciente(req, res) {
   try {
+    if (
+      req.body.dataNascimento !== undefined &&
+      !dataCivilValida(req.body.dataNascimento)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "A data de nascimento deve estar no formato AAAA-MM-DD e representar uma data válida."
+      });
+    }
 
     const paciente = await Paciente.create(req.body);
 
     return res.status(201).json({
       success: true,
-      mensagem: "Paciente cadastrado com sucesso!",
+      message: "Paciente cadastrado com sucesso!",
       data: paciente
     });
 
   } catch (erro) {
+    if (erro.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: erro.message
+      });
+    }
 
-    return res.status(400).json({
+    if (erro.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Um ou mais campos possuem valores inválidos."
+      });
+    }
+
+    console.error("Erro ao cadastrar paciente:", erro);
+
+    return res.status(500).json({
       success: false,
-      message: erro.message
+      message: "Erro interno ao cadastrar paciente."
     });
-
   }
-
 }
+
 
 async function listarPacientes(req, res) {
 
@@ -67,9 +107,19 @@ async function buscarPacientePorId(req, res) {
     });
 
   } catch (erro) {
-    return res.status(400).json({
+
+    if (erro.name === "CastError" && erro.path === "_id") {
+      return res.status(400).json({
+        success: false,
+        message: "ID inválido."
+      });
+    }
+
+    console.error("Erro ao buscar paciente:", erro);
+
+    return res.status(500).json({
       success: false,
-      message: "ID inválido."
+      message: "Erro interno ao buscar paciente."
     });
   }
 }
@@ -78,11 +128,21 @@ async function atualizarPaciente(req, res) {
   try {
     const { id } = req.params;
 
+    if (
+      req.body.dataNascimento !== undefined &&
+      !dataCivilValida(req.body.dataNascimento)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "A data de nascimento deve estar no formato AAAA-MM-DD e representar uma data válida."
+      });
+    }
+
     const paciente = await Paciente.findByIdAndUpdate(
       id,
       req.body,
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true
       }
     );
@@ -101,12 +161,37 @@ async function atualizarPaciente(req, res) {
     });
 
   } catch (erro) {
-    return res.status(400).json({
+
+    if (erro.name === "CastError" && erro.path === "_id") {
+      return res.status(400).json({
+        success: false,
+        message: "ID inválido."
+      });
+    }
+
+    if (erro.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: erro.message
+      });
+    }
+
+    if (erro.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Valor inválido em um dos campos enviados."
+      });
+    }
+
+    console.error("Erro ao atualizar paciente:", erro);
+
+    return res.status(500).json({
       success: false,
-      message: erro.message
+      message: "Erro interno ao atualizar paciente."
     });
   }
 }
+
 
 async function deletarPaciente(req, res) {
   try {
@@ -121,15 +206,19 @@ async function deletarPaciente(req, res) {
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Paciente removido com sucesso."
-    });
+    return res.status(204).send();
 
   } catch (erro) {
-    return res.status(400).json({
+    if (erro.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "ID inválido."
+      });
+    }
+
+    return res.status(500).json({
       success: false,
-      message: "ID inválido."
+      message: "Erro interno ao remover paciente."
     });
   }
 }
