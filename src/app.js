@@ -3,6 +3,9 @@ const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./docs/swagger");
 
+const authRoutes = require("./routes/authRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+const gestorRoutes = require("./routes/gestorRoutes");
 const pacienteRoutes = require("./routes/pacienteRoutes");
 
 const app = express();
@@ -23,7 +26,9 @@ app.get("/", (req, res) => {
     });
 });
 
-
+app.use("/api/auth", authRoutes);
+app.use("/api/admins", adminRoutes);
+app.use("/api/gestores", gestorRoutes);
 app.use("/api/pacientes", pacienteRoutes);
 
 module.exports = app;

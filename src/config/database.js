@@ -1,14 +1,14 @@
+
 const mongoose = require("mongoose");
 
 async function conectarBanco() {
-  try {
-    await mongoose.connect(process.env.MONGO_URI);
-
-    console.log("✅ Banco conectado:", mongoose.connection.name);
-
-  } catch (erro) {
-    console.error("Erro ao conectar:", erro.message);
+  if (!process.env.MONGO_URI) {
+    throw new Error("A variável MONGO_URI não foi definida.");
   }
+
+  await mongoose.connect(process.env.MONGO_URI);
+
+  console.log("✅ Banco conectado:", mongoose.connection.name);
 }
 
 module.exports = conectarBanco;
