@@ -36,10 +36,30 @@ const options = {
                     "Operações relacionadas a conta de Gestores."
             },
             {
+                name: "Cadastro de Gestores",
+                description:
+                    "Operações relacionadas ao cadastro de gestores."
+            },
+            {
+                name: "Médicos",
+                description:
+                    "Operações de consulta de médicos e profissionais disponíveis."
+            },
+            {
                 name: "Pacientes",
                 description:
                     "Operações relacionadas ao cadastro de pacientes."
-            }
+            },
+            {
+                name: "Agendamentos",
+                description:
+                    "Operações relacionadas ao agendamento de consultas dos pacientes."
+            },
+            {
+                name: "Pacientes",
+                description:
+                    "Operações relacionadas ao cadastro de pacientes."
+            },
         ],
 
         components: {

@@ -6,6 +6,8 @@ const swaggerSpec = require("./docs/swagger");
 const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const gestorRoutes = require("./routes/gestorRoutes");
+const agendamentoRoutes = require("./routes/agendamentoRoutes");
+const medicoRoutes = require("./routes/medicoRoutes");
 const pacienteRoutes = require("./routes/pacienteRoutes");
 
 const app = express();
@@ -30,5 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admins", adminRoutes);
 app.use("/api/gestores", gestorRoutes);
 app.use("/api/pacientes", pacienteRoutes);
+app.use("/api/agendamentos", agendamentoRoutes);
+app.use("/api/medicos", medicoRoutes);
 
 module.exports = app;

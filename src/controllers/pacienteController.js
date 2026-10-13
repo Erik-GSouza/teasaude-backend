@@ -19,9 +19,43 @@ function dataCivilValida(valor) {
 
 async function criarPaciente(req, res) {
   try {
+    const dados = req.body ?? {};
+
     if (
-      req.body.dataNascimento !== undefined &&
-      !dataCivilValida(req.body.dataNascimento)
+      typeof dados !== "object" ||
+      dados === null ||
+      Array.isArray(dados)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Envie um objeto JSON válido."
+      });
+    }
+
+    const camposPermitidos = [
+      "nomeCompleto",
+      "dataNascimento",
+      "nomeContato",
+      "telefoneContato",
+      "emailContato"
+    ];
+
+    const camposRecebidos = Object.keys(dados);
+
+    if (
+      camposRecebidos.some(
+        campo => !camposPermitidos.includes(campo)
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "O cadastro contém campos não permitidos."
+      });
+    }
+
+    if (
+      dados.dataNascimento !== undefined &&
+      !dataCivilValida(dados.dataNascimento)
     ) {
       return res.status(400).json({
         success: false,
@@ -30,7 +64,13 @@ async function criarPaciente(req, res) {
       });
     }
 
-    const paciente = await Paciente.create(req.body);
+    const dadosPaciente = Object.fromEntries(
+      camposPermitidos
+        .filter(campo => Object.hasOwn(dados, campo))
+        .map(campo => [campo, dados[campo]])
+    );
+
+    const paciente = await Paciente.create(dadosPaciente);
 
     return res.status(201).json({
       success: true,
@@ -39,21 +79,17 @@ async function criarPaciente(req, res) {
     });
 
   } catch (erro) {
-    if (erro.name === "ValidationError") {
+    if (
+      erro.name === "ValidationError" ||
+      erro.name === "CastError"
+    ) {
       return res.status(400).json({
         success: false,
         message: erro.message
       });
     }
 
-    if (erro.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Um ou mais campos possuem valores inválidos."
-      });
-    }
-
-    console.error("Erro ao cadastrar paciente:", erro);
+    console.error("Erro ao cadastrar paciente.");
 
     return res.status(500).json({
       success: false,
@@ -61,7 +97,6 @@ async function criarPaciente(req, res) {
     });
   }
 }
-
 
 async function listarPacientes(req, res) {
 
