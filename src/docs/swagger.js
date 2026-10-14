@@ -1,6 +1,29 @@
 
 const swaggerJsdoc = require("swagger-jsdoc");
 
+const urlRender = process.env.RENDER_EXTERNAL_URL
+    ? process.env.RENDER_EXTERNAL_URL.replace(/\/+$/, "")
+    : null;
+
+
+const servidores = urlRender
+    ? [
+        {
+            url: urlRender,
+            description: "Servidor no Render"
+        },
+        {
+            url: "http://localhost:3000",
+            description: "Servidor local"
+        }
+    ]
+    : [
+        {
+            url: "http://localhost:3000",
+            description: "Servidor local"
+        }
+    ];
+
 const options = {
     definition: {
         openapi: "3.0.0",
@@ -12,12 +35,7 @@ const options = {
                 "Backend desenvolvido em Node.js para o Projeto Integrador do curso de Análise e Desenvolvimento de Sistemas (SENAC)."
         },
 
-        servers: [
-            {
-                url: "http://localhost:3000",
-                description: "Servidor local"
-            }
-        ],
+        servers: servidores,
 
         tags: [
             {
@@ -33,12 +51,12 @@ const options = {
             {
                 name: "Gestores",
                 description:
-                    "Operações relacionadas a conta de Gestores."
+                    "Operações relacionadas às contas de Gestores."
             },
             {
                 name: "Cadastro de Gestores",
                 description:
-                    "Operações relacionadas ao cadastro de gestores."
+                    "Operações relacionadas ao cadastro de Gestores."
             },
             {
                 name: "Médicos",
@@ -48,18 +66,13 @@ const options = {
             {
                 name: "Pacientes",
                 description:
-                    "Operações relacionadas ao cadastro de pacientes."
+                    "Operações relacionadas ao cadastro e à gestão de pacientes."
             },
             {
                 name: "Agendamentos",
                 description:
-                    "Operações relacionadas ao agendamento de consultas dos pacientes."
-            },
-            {
-                name: "Pacientes",
-                description:
-                    "Operações relacionadas ao cadastro de pacientes."
-            },
+                    "Operações relacionadas ao agendamento e à consulta de consultas dos pacientes."
+            }
         ],
 
         components: {
