@@ -9,6 +9,7 @@ const gestorRoutes = require("./routes/gestorRoutes");
 const agendamentoRoutes = require("./routes/agendamentoRoutes");
 const medicoRoutes = require("./routes/medicoRoutes");
 const pacienteRoutes = require("./routes/pacienteRoutes");
+const disponibilidadeRoutes = require("./routes/disponibilidadeRoutes");
 
 const app = express();
 
@@ -34,5 +35,5 @@ app.use("/api/gestores", gestorRoutes);
 app.use("/api/pacientes", pacienteRoutes);
 app.use("/api/agendamentos", agendamentoRoutes);
 app.use("/api/medicos", medicoRoutes);
-
+app.use("/api/disponibilidades", disponibilidadeRoutes);
 module.exports = app;

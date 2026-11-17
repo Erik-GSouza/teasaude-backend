@@ -39,6 +39,24 @@ const medicoSchema = new mongoose.Schema(
             index: true
         },
 
+        usuarioId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Usuario",
+            unique: true,
+            sparse: true
+        },
+
+        modalidades: {
+            type: [String],
+            default: []
+        },
+
+        orientacoesDocumentos: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+
         ativo: {
             type: Boolean,
             default: true

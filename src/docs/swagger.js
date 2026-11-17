@@ -72,7 +72,12 @@ const options = {
                 name: "Agendamentos",
                 description:
                     "Operações relacionadas ao agendamento e à consulta de consultas dos pacientes."
-            }
+            },
+            {
+                name: "Disponibilidades",
+                description:
+                    "Operações relacionadas à publicação e consulta dos horários disponíveis dos médicos."
+            },
         ],
 
         components: {
