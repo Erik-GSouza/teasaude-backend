@@ -8,6 +8,7 @@ const { prepararDadosUsuario } = require("../services/usuarioService");
 const Usuario = require("../models/Usuario");
 const Paciente = require("../models/Paciente");
 
+// Valida se a data recebida representa uma data civil existente.
 function dataCivilValida(valor) {
     if (
         typeof valor !== "string" ||
@@ -26,10 +27,35 @@ function dataCivilValida(valor) {
     );
 }
 
+// Verifica se o paciente possui menos de 18 anos.
+function menorDe18Anos(dataNascimento) {
+    const [ano, mes, dia] = dataNascimento.split("-").map(Number);
+    const hoje = new Date();
+
+    let idade = hoje.getFullYear() - ano;
+
+    const aindaNaoFezAniversario =
+        hoje.getMonth() + 1 < mes ||
+        (
+            hoje.getMonth() + 1 === mes &&
+            hoje.getDate() < dia
+        );
+
+    if (aindaNaoFezAniversario) {
+        idade--;
+    }
+
+    return idade < 18;
+}
+
+// Remove dados sensíveis antes de retornar o usuário.
 function usuarioPublico(usuario) {
     return {
         _id: usuario._id,
+        nomeCompleto: usuario.nomeCompleto,
         nomeUsuario: usuario.nomeUsuario,
+        telefone: usuario.telefone,
+        email: usuario.email,
         perfil: usuario.perfil,
         instituicaoId: usuario.instituicaoId,
         ativo: usuario.ativo,
@@ -38,8 +64,8 @@ function usuarioPublico(usuario) {
     };
 }
 
-
-async function cadastrarPaciente(req, res) {
+// Cadastra a conta do responsável e seu primeiro paciente.
+async function cadastrarResponsavel(req, res) {
     const dados = req.body ?? {};
 
     if (
@@ -52,7 +78,7 @@ async function cadastrarPaciente(req, res) {
         });
     }
 
-
+    // Mantém os nomes dos campos utilizados pelo frontend atual.
     const camposPermitidos = [
         "nomeUsuario",
         "senha",
@@ -81,11 +107,14 @@ async function cadastrarPaciente(req, res) {
         typeof dados.senha !== "string" ||
         dados.senha === "" ||
         typeof dados.nomeCompleto !== "string" ||
+        dados.nomeCompleto.trim() === "" ||
         typeof dados.nomeContato !== "string" ||
-        typeof dados.telefoneContato !== "string"
+        dados.nomeContato.trim() === "" ||
+        typeof dados.telefoneContato !== "string" ||
+        dados.telefoneContato.trim() === ""
     ) {
         return res.status(400).json({
-            message: "Informe os campos obrigatórios do cadastro."
+            message: "Informe todos os campos obrigatórios do cadastro."
         });
     }
 
@@ -96,12 +125,18 @@ async function cadastrarPaciente(req, res) {
         });
     }
 
+    if (!menorDe18Anos(dados.dataNascimento)) {
+        return res.status(400).json({
+            message: "O paciente cadastrado deve ter menos de 18 anos."
+        });
+    }
+
     if (
         dados.emailContato !== undefined &&
         typeof dados.emailContato !== "string"
     ) {
         return res.status(400).json({
-            message: "O e-mail do contato deve ser um texto."
+            message: "O e-mail do responsável deve ser um texto."
         });
     }
 
@@ -116,53 +151,58 @@ async function cadastrarPaciente(req, res) {
     let session;
 
     try {
-    
-        const dadosUsuario = await prepararDadosUsuario({
+        // Prepara o login e criptografa a senha com bcrypt.
+        const dadosAcesso = await prepararDadosUsuario({
             nomeUsuario: dados.nomeUsuario,
             senha: dados.senha
         });
+
+        // Dados pertencentes ao responsável.
+        const dadosResponsavel = {
+            ...dadosAcesso,
+            nomeCompleto: dados.nomeContato.trim(),
+            telefone: dados.telefoneContato,
+            perfil: "responsavel",
+            instituicaoId: null,
+            ativo: true
+        };
+
+        if (dados.emailContato !== undefined) {
+            dadosResponsavel.email = dados.emailContato;
+        }
 
         session = await mongoose.startSession();
 
         let usuarioCriado;
         let pacienteCriado;
 
+        // Cria responsável e paciente na mesma transação.
         await session.withTransaction(async () => {
+
             const usuarios = await Usuario.create(
-                [
-                    {
-                        ...dadosUsuario,
-                        perfil: "paciente",
-                        instituicaoId: null,
-                        ativo: true
-                    }
-                ],
+                [dadosResponsavel],
                 { session }
             );
 
             usuarioCriado = usuarios[0];
 
-            const dadosPaciente = {
-                nomeCompleto: dados.nomeCompleto,
-                dataNascimento: dados.dataNascimento,
-                nomeContato: dados.nomeContato,
-                telefoneContato: dados.telefoneContato,
-                usuarioId: usuarioCriado._id
-            };
-
-            if (dados.emailContato !== undefined) {
-                dadosPaciente.emailContato = dados.emailContato;
-            }
-
             const pacientes = await Paciente.create(
-                [dadosPaciente],
+                [
+                    {
+                        nomeCompleto: dados.nomeCompleto.trim(),
+                        dataNascimento: new Date(
+                            `${dados.dataNascimento}T00:00:00.000Z`
+                        ),
+                        responsavelId: usuarioCriado._id
+                    }
+                ],
                 { session }
             );
 
             pacienteCriado = pacientes[0];
         });
 
-        // Cria uma sessão para o usuário que acabou de se cadastrar.
+        // Gera o token JWT do responsável.
         const token = jwt.sign(
             { id: String(usuarioCriado._id) },
             process.env.JWT_SECRET,
@@ -173,23 +213,23 @@ async function cadastrarPaciente(req, res) {
         );
 
         return res.status(201).json({
-            message: "Paciente cadastrado com sucesso.",
+            message: "Responsável e paciente cadastrados com sucesso.",
             token,
+
             usuario: usuarioPublico(usuarioCriado),
+
             paciente: {
                 _id: pacienteCriado._id,
                 nomeCompleto: pacienteCriado.nomeCompleto,
                 dataNascimento: pacienteCriado.dataNascimento,
-                nomeContato: pacienteCriado.nomeContato,
-                telefoneContato: pacienteCriado.telefoneContato,
-                emailContato: pacienteCriado.emailContato,
-                usuarioId: pacienteCriado.usuarioId,
+                responsavelId: pacienteCriado.responsavelId,
                 createdAt: pacienteCriado.createdAt,
                 updatedAt: pacienteCriado.updatedAt
             }
         });
 
     } catch (erro) {
+
         if (erro.code === 11000) {
             return res.status(409).json({
                 message: "Esse nome de usuário já está cadastrado."
@@ -217,7 +257,9 @@ async function cadastrarPaciente(req, res) {
             });
         }
 
-        console.error("Erro ao cadastrar paciente e usuário.");
+        console.error(
+            "Erro ao cadastrar responsável e primeiro paciente."
+        );
 
         return res.status(500).json({
             message: "Não foi possível realizar o cadastro."
@@ -230,6 +272,7 @@ async function cadastrarPaciente(req, res) {
     }
 }
 
+// Login utilizado por todos os perfis.
 async function login(req, res) {
     const { nomeUsuario, senha } = req.body ?? {};
 
@@ -255,7 +298,9 @@ async function login(req, res) {
             token: resultado.token,
             usuario: resultado.usuario
         });
+
     } catch (erro) {
+
         if (
             erro.message === "Credenciais inválidas." ||
             erro.message === "Conta inativa."
@@ -265,7 +310,7 @@ async function login(req, res) {
             });
         }
 
-        console.error("Erro ao autenticar usuário:", erro);
+        console.error("Erro ao autenticar usuário.");
 
         return res.status(500).json({
             message: "Não foi possível realizar o login."
@@ -273,6 +318,7 @@ async function login(req, res) {
     }
 }
 
+// Retorna os dados da conta autenticada.
 function obterUsuarioAutenticado(req, res) {
     return res.status(200).json({
         message: "Usuário autenticado.",
@@ -281,7 +327,7 @@ function obterUsuarioAutenticado(req, res) {
 }
 
 module.exports = {
-    cadastrarPaciente,
+    cadastrarResponsavel,
     login,
     obterUsuarioAutenticado
 };

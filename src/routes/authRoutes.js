@@ -1,7 +1,8 @@
+
 const express = require("express");
 
 const {
-    cadastrarPaciente,
+    cadastrarResponsavel,
     login,
     obterUsuarioAutenticado
 } = require("../controllers/authController");
@@ -14,8 +15,8 @@ const router = express.Router();
  * @swagger
  * /api/auth/cadastro:
  *   post:
- *     summary: Cadastra uma conta de paciente
- *     description: Cria a conta de acesso e o cadastro do paciente de forma integrada.
+ *     summary: Cadastra um responsável e seu primeiro paciente
+ *     description: Cria a conta do responsável e o primeiro paciente de forma integrada.
  *     tags:
  *       - Autenticação
  *     requestBody:
@@ -34,39 +35,43 @@ const router = express.Router();
  *             properties:
  *               nomeUsuario:
  *                 type: string
- *                 example: paciente.demo
+ *                 example: ana.silva
  *               senha:
  *                 type: string
  *                 format: password
  *                 minLength: 8
- *                 example: TestePaciente2026!
+ *                 example: SenhaSegura2026!
  *               nomeCompleto:
  *                 type: string
- *                 example: Maria Eduarda Silva
+ *                 description: Nome do primeiro paciente.
+ *                 example: Pedro Silva
  *               dataNascimento:
  *                 type: string
  *                 format: date
- *                 example: "2013-05-12"
+ *                 example: "2015-04-20"
  *               nomeContato:
  *                 type: string
+ *                 description: Nome completo do responsável.
  *                 example: Ana Paula Silva
  *               telefoneContato:
  *                 type: string
+ *                 description: Telefone do responsável com DDD.
  *                 example: "81999998888"
  *               emailContato:
  *                 type: string
- *                 example: responsavel@exemplo.com
+ *                 description: E-mail opcional do responsável.
+ *                 example: ana@email.com
  *     responses:
  *       201:
- *         description: Conta e cadastro de paciente criados
+ *         description: Responsável e primeiro paciente cadastrados.
  *       400:
- *         description: Dados inválidos ou campos não permitidos
+ *         description: Dados inválidos ou campos não permitidos.
  *       409:
- *         description: Nome de usuário já cadastrado
+ *         description: Nome de usuário já cadastrado.
  *       500:
- *         description: Erro interno do servidor
+ *         description: Erro interno do servidor.
  */
-router.post("/cadastro", cadastrarPaciente);
+router.post("/cadastro", cadastrarResponsavel);
 
 /**
  * @swagger
@@ -91,16 +96,15 @@ router.post("/cadastro", cadastrarPaciente);
  *               senha:
  *                 type: string
  *                 format: password
- *                 example: "senha-de-teste-com-15-caracteres"
  *     responses:
  *       200:
- *         description: Login realizado com sucesso
+ *         description: Login realizado com sucesso.
  *       400:
- *         description: Dados obrigatórios ausentes ou inválidos
+ *         description: Dados obrigatórios ausentes ou inválidos.
  *       401:
- *         description: Credenciais inválidas ou conta inativa
+ *         description: Credenciais inválidas ou conta inativa.
  *       500:
- *         description: Erro interno do servidor
+ *         description: Erro interno do servidor.
  */
 router.post("/login", login);
 
@@ -115,13 +119,16 @@ router.post("/login", login);
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Dados públicos do usuário autenticado
+ *         description: Dados públicos do usuário autenticado.
  *       401:
- *         description: Token ausente, inválido, expirado ou conta inativa
+ *         description: Token ausente, inválido, expirado ou conta inativa.
  *       500:
- *         description: Erro interno do servidor
+ *         description: Erro interno do servidor.
  */
-router.get("/me", authMiddleware, obterUsuarioAutenticado);
-
+router.get(
+    "/me",
+    authMiddleware,
+    obterUsuarioAutenticado
+);
 
 module.exports = router;

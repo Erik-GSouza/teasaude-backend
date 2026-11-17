@@ -1,3 +1,4 @@
+
 const express = require("express");
 
 const router = express.Router();
@@ -7,119 +8,120 @@ const pacienteController = require("../controllers/pacienteController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const autorizarPerfis = require("../middlewares/perfilMiddleware");
 
+// =====================================================
+// ROTAS DO RESPONSÁVEL
+// =====================================================
 
 /**
  * @swagger
  * /api/pacientes:
- *   get:
- *     summary: Lista todos os pacientes cadastrados.
+ *   post:
+ *     summary: Cadastra um novo paciente para o responsável autenticado
  *     tags:
  *       - Pacientes
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nomeCompleto
+ *               - dataNascimento
+ *             properties:
+ *               nomeCompleto:
+ *                 type: string
+ *                 example: Maria Silva
+ *               dataNascimento:
+ *                 type: string
+ *                 format: date
+ *                 example: "2017-08-15"
  *     responses:
- *       200:
- *         description: Lista de pacientes retornada com sucesso.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Pacientes encontrados com sucesso.
- *                 total:
- *                   type: integer
- *                   example: 2
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       _id:
- *                         type: string
- *                         example: 6acbb89bc808f95673ceed7f
- *                       nomeCompleto:
- *                         type: string
- *                         example: Maria Eduarda Silva
- *                       dataNascimento:
- *                         type: string
- *                         format: date-time
- *                         example: "2013-05-12T00:00:00.000Z"
- *                       nomeContato:
- *                         type: string
- *                         example: Ana Paula Silva
- *                       telefoneContato:
- *                         type: string
- *                         example: "81999998888"
- *                       emailContato:
- *                         type: string
- *                         example: ana@email.com
- *                       createdAt:
- *                         type: string
- *                         format: date-time
- *                         example: "2026-10-11T16:26:03.709Z"
- *                       updatedAt:
- *                         type: string
- *                         format: date-time
- *                         example: "2026-10-11T18:56:23.311Z"
- *                       __v:
- *                         type: integer
- *                         example: 0
+ *       201:
+ *         description: Paciente cadastrado com sucesso.
+ *       400:
+ *         description: Dados inválidos.
+ *       401:
+ *         description: Usuário não autenticado.
+ *       403:
+ *         description: Perfil não autorizado.
  *       500:
- *         description: Erro ao listar pacientes.
+ *         description: Erro interno.
  */
-
-router.get(
-  "/",
-  authMiddleware,
-  autorizarPerfis("admin"),
-  pacienteController.listarPacientes
+router.post(
+    "/",
+    authMiddleware,
+    autorizarPerfis("responsavel"),
+    pacienteController.criarPaciente
 );
 
 /**
  * @swagger
- * /api/pacientes/{id}:
+ * /api/pacientes/meus:
  *   get:
- *     summary: Busca um paciente pelo ID.
+ *     summary: Lista os pacientes vinculados ao responsável autenticado
  *     tags:
  *       - Pacientes
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de pacientes retornada.
+ *       401:
+ *         description: Usuário não autenticado.
+ *       403:
+ *         description: Perfil não autorizado.
+ *       500:
+ *         description: Erro interno.
+ */
+router.get(
+    "/meus",
+    authMiddleware,
+    autorizarPerfis("responsavel"),
+    pacienteController.listarMeusPacientes
+);
+
+/**
+ * @swagger
+ * /api/pacientes/meus/{id}:
+ *   get:
+ *     summary: Consulta um paciente pertencente ao responsável autenticado
+ *     tags:
+ *       - Pacientes
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: ID do paciente no MongoDB.
  *     responses:
  *       200:
  *         description: Paciente encontrado.
  *       400:
  *         description: ID inválido.
  *       404:
- *         description: Paciente não encontrado
- *       500:
- *         description: Erro interno ao buscar paciente.
- *      
+ *         description: Paciente não encontrado ou não pertence ao responsável.
  */
-
 router.get(
-  "/:id",
-  authMiddleware,
-  autorizarPerfis("admin"),
-  pacienteController.buscarPacientePorId
+    "/meus/:id",
+    authMiddleware,
+    autorizarPerfis("responsavel"),
+    pacienteController.buscarMeuPacientePorId
 );
-
-
 
 /**
  * @swagger
- * /api/pacientes/{id}:
+ * /api/pacientes/meus/{id}:
  *   patch:
- *     summary: Atualiza um paciente.
+ *     summary: Atualiza dados de um paciente do responsável autenticado
  *     tags:
  *       - Pacientes
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -133,42 +135,137 @@ router.get(
  *           schema:
  *             type: object
  *             properties:
- *               telefoneContato:
+ *               nomeCompleto:
  *                 type: string
- *               emailContato:
- *                 type: string
- *               nomeContato:
- *                 type: string
+ *                 example: Pedro Silva
  *               dataNascimento:
  *                 type: string
  *                 format: date
- *                 description: Data de nascimento completa no formato AAAA-MM-DD.
- *                 example: "2013-06-15"
+ *                 example: "2015-04-20"
  *     responses:
  *       200:
  *         description: Paciente atualizado.
  *       400:
- *         description: ID inválido ou dados inválidos.
+ *         description: Dados inválidos.
  *       404:
  *         description: Paciente não encontrado.
- *       500:
- *         description: Erro interno ao atualizar paciente.
  */
-
 router.patch(
-  "/:id",
-  authMiddleware,
-  autorizarPerfis("admin"),
-  pacienteController.atualizarPaciente
+    "/meus/:id",
+    authMiddleware,
+    autorizarPerfis("responsavel"),
+    pacienteController.atualizarMeuPaciente
+);
+
+// =====================================================
+// ROTAS ADMINISTRATIVAS
+// =====================================================
+
+/**
+ * @swagger
+ * /api/pacientes:
+ *   get:
+ *     summary: Lista todos os pacientes cadastrados
+ *     tags:
+ *       - Pacientes
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista administrativa de pacientes.
+ *       401:
+ *         description: Usuário não autenticado.
+ *       403:
+ *         description: Acesso permitido somente ao Admin.
+ */
+router.get(
+    "/",
+    authMiddleware,
+    autorizarPerfis("admin"),
+    pacienteController.listarPacientes
+);
+
+/**
+ * @swagger
+ * /api/pacientes/{id}:
+ *   get:
+ *     summary: Busca um paciente pelo ID
+ *     tags:
+ *       - Pacientes
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Paciente encontrado.
+ *       400:
+ *         description: ID inválido.
+ *       404:
+ *         description: Paciente não encontrado.
+ */
+router.get(
+    "/:id",
+    authMiddleware,
+    autorizarPerfis("admin"),
+    pacienteController.buscarPacientePorId
+);
+
+/**
+ * @swagger
+ * /api/pacientes/{id}:
+ *   patch:
+ *     summary: Atualiza um paciente pela administração
+ *     tags:
+ *       - Pacientes
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nomeCompleto:
+ *                 type: string
+ *               dataNascimento:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       200:
+ *         description: Paciente atualizado.
+ *       400:
+ *         description: Dados inválidos.
+ *       404:
+ *         description: Paciente não encontrado.
+ */
+router.patch(
+    "/:id",
+    authMiddleware,
+    autorizarPerfis("admin"),
+    pacienteController.atualizarPaciente
 );
 
 /**
  * @swagger
  * /api/pacientes/{id}:
  *   delete:
- *     summary: Remove um paciente.
+ *     summary: Exclui um paciente sem histórico de agendamentos
  *     tags:
  *       - Pacientes
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -177,19 +274,19 @@ router.patch(
  *           type: string
  *     responses:
  *       204:
- *         description: Paciente removido com sucesso. Sem corpo na resposta.
+ *         description: Paciente removido.
  *       400:
  *         description: ID inválido.
  *       404:
  *         description: Paciente não encontrado.
- *       500:
- *         description: Erro interno ao remover paciente.
+ *       409:
+ *         description: Paciente possui histórico de agendamentos.
  */
 router.delete(
-  "/:id",
-  authMiddleware,
-  autorizarPerfis("admin"),
-  pacienteController.deletarPaciente
+    "/:id",
+    authMiddleware,
+    autorizarPerfis("admin"),
+    pacienteController.deletarPaciente
 );
 
 module.exports = router;

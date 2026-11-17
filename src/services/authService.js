@@ -3,6 +3,22 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Usuario = require("../models/Usuario");
 
+// Define quais informações podem ser expostas ao frontend.
+function usuarioPublico(usuario) {
+    return {
+        _id: usuario._id,
+        nomeCompleto: usuario.nomeCompleto,
+        nomeUsuario: usuario.nomeUsuario,
+        telefone: usuario.telefone,
+        email: usuario.email,
+        perfil: usuario.perfil,
+        instituicaoId: usuario.instituicaoId,
+        ativo: usuario.ativo,
+        createdAt: usuario.createdAt,
+        updatedAt: usuario.updatedAt
+    };
+}
+
 async function autenticarUsuario(nomeUsuario, senha) {
     if (
         typeof nomeUsuario !== "string" ||
@@ -16,7 +32,6 @@ async function autenticarUsuario(nomeUsuario, senha) {
     const usuario = await Usuario.findOne({
         nomeUsuario: nomeUsuario.trim().toLowerCase()
     }).select("+senhaHash");
-
 
     if (!usuario) {
         throw new Error("Credenciais inválidas.");
@@ -50,15 +65,7 @@ async function autenticarUsuario(nomeUsuario, senha) {
 
     return {
         token,
-        usuario: {
-            _id: usuario._id,
-            nomeUsuario: usuario.nomeUsuario,
-            perfil: usuario.perfil,
-            instituicaoId: usuario.instituicaoId,
-            ativo: usuario.ativo,
-            createdAt: usuario.createdAt,
-            updatedAt: usuario.updatedAt
-        }
+        usuario: usuarioPublico(usuario)
     };
 }
 

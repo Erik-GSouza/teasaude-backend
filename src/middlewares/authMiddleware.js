@@ -24,6 +24,7 @@ async function authMiddleware(req, res, next) {
     }
 
     const token = correspondencia[1];
+
     let payload;
 
     try {
@@ -53,12 +54,13 @@ async function authMiddleware(req, res, next) {
     try {
         usuario = await Usuario.findById(payload.id)
             .select(
-                "_id nomeUsuario perfil instituicaoId ativo createdAt updatedAt"
+                "_id nomeCompleto nomeUsuario telefone email perfil instituicaoId ativo createdAt updatedAt"
             )
             .lean();
+
     } catch (erro) {
         console.error(
-            "Erro ao consultar o usuário durante a autenticação."
+            "Erro ao consultar usuário durante a autenticação."
         );
 
         return res.status(500).json({
@@ -74,14 +76,16 @@ async function authMiddleware(req, res, next) {
 
     req.usuario = {
         _id: usuario._id.toString(),
+        nomeCompleto: usuario.nomeCompleto,
         nomeUsuario: usuario.nomeUsuario,
+        telefone: usuario.telefone,
+        email: usuario.email,
         perfil: usuario.perfil,
         instituicaoId: usuario.instituicaoId,
         ativo: usuario.ativo,
         createdAt: usuario.createdAt,
         updatedAt: usuario.updatedAt
     };
-
 
     return next();
 }
