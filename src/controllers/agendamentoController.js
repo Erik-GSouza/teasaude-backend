@@ -1,20 +1,15 @@
+const mongoose = require("mongoose");
 
 const Agendamento = require("../models/Agendamento");
 const Paciente = require("../models/Paciente");
+const Disponibilidade = require("../models/Disponibilidade");
 const Medico = require("../models/Medico");
 const Instituicao = require("../models/Instituicao");
 
-function dataHoraValida(valor) {
-    if (
-        typeof valor !== "string" ||
-        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(valor)
-    ) {
-        return false;
-    }
-
-    const data = new Date(valor);
-    return !Number.isNaN(data.getTime());
-}
+const STATUS_QUE_OCUPAM_VAGA = [
+    "pendente",
+    "agendada"
+];
 
 async function criarAgendamento(req, res) {
     const dados = req.body ?? {};
@@ -29,16 +24,18 @@ async function criarAgendamento(req, res) {
         });
     }
 
-    const camposPermitidos = ["medicoId", "dataHora"];
+    const camposPermitidos = [
+        "pacienteId",
+        "disponibilidadeId",
+        "motivo",
+        "modalidade",
+        "plano"
+    ];
+
     const camposRecebidos = Object.keys(dados);
 
-    if (camposRecebidos.length === 0) {
-        return res.status(400).json({
-            message: "Informe o médico e a data e hora da consulta."
-        });
-    }
-
     if (
+        camposRecebidos.length === 0 ||
         camposRecebidos.some(
             campo => !camposPermitidos.includes(campo)
         )
@@ -49,43 +46,80 @@ async function criarAgendamento(req, res) {
     }
 
     if (
-        typeof dados.medicoId !== "string" ||
-        !/^[a-f\d]{24}$/i.test(dados.medicoId)
+        typeof dados.pacienteId !== "string" ||
+        !mongoose.isValidObjectId(dados.pacienteId)
     ) {
         return res.status(400).json({
-            message: "ID do médico inválido."
+            message: "ID do paciente inválido."
         });
     }
 
-    if (!dataHoraValida(dados.dataHora)) {
+    if (
+        typeof dados.disponibilidadeId !== "string" ||
+        !mongoose.isValidObjectId(dados.disponibilidadeId)
+    ) {
         return res.status(400).json({
-            message:
-                "Informe uma data e hora válidas, incluindo o fuso horário."
+            message: "ID da disponibilidade inválido."
         });
     }
 
-    const dataHora = new Date(dados.dataHora);
-
-    if (dataHora <= new Date()) {
-        return res.status(400).json({
-            message: "A consulta deve ser marcada para uma data futura."
-        });
+    for (const campo of [
+        "motivo",
+        "modalidade",
+        "plano"
+    ]) {
+        if (
+            dados[campo] !== undefined &&
+            (
+                typeof dados[campo] !== "string" ||
+                dados[campo].trim() === ""
+            )
+        ) {
+            return res.status(400).json({
+                message: `O campo ${campo} deve ser um texto válido.`
+            });
+        }
     }
 
     try {
         const paciente = await Paciente.findOne({
-            usuarioId: req.usuario._id
+            _id: dados.pacienteId,
+            responsavelId: req.usuario._id
         });
 
         if (!paciente) {
             return res.status(404).json({
                 message:
-                    "Não existe cadastro de paciente vinculado a esta conta."
+                    "Paciente não encontrado ou não pertence ao responsável autenticado."
             });
         }
 
+        const disponibilidade = await Disponibilidade.findById(
+            dados.disponibilidadeId
+        );
 
-        const medico = await Medico.findById(dados.medicoId);
+        if (!disponibilidade) {
+            return res.status(404).json({
+                message: "Disponibilidade não encontrada."
+            });
+        }
+
+        if (!disponibilidade.ativo) {
+            return res.status(409).json({
+                message: "Esta disponibilidade está inativa."
+            });
+        }
+
+        if (disponibilidade.inicio <= new Date()) {
+            return res.status(409).json({
+                message:
+                    "Não é possível solicitar uma disponibilidade passada."
+            });
+        }
+
+        const medico = await Medico.findById(
+            disponibilidade.medicoId
+        );
 
         if (!medico) {
             return res.status(404).json({
@@ -99,33 +133,134 @@ async function criarAgendamento(req, res) {
             });
         }
 
-       
         const instituicao = await Instituicao.findById(
             medico.instituicaoId
         );
 
         if (!instituicao) {
             return res.status(404).json({
-                message: "A instituição do médico não foi encontrada."
+                message:
+                    "A instituição vinculada ao médico não foi encontrada."
             });
         }
 
         if (!instituicao.ativo) {
             return res.status(409).json({
-                message: "A instituição do médico está inativa."
+                message: "A instituição está inativa."
             });
         }
 
-        const agendamento = await Agendamento.create({
+        if (dados.modalidade) {
+            const modalidadesMedico = medico.modalidades || [];
+
+            if (
+                modalidadesMedico.length > 0 &&
+                !modalidadesMedico.some(
+                    modalidade =>
+                        modalidade.toLowerCase() ===
+                        dados.modalidade.trim().toLowerCase()
+                )
+            ) {
+                return res.status(400).json({
+                    message:
+                        "A modalidade informada não está disponível para este médico."
+                });
+            }
+        }
+
+        const disponibilidadeOcupada =
+            await Agendamento.exists({
+                disponibilidadeId: disponibilidade._id,
+                status: {
+                    $in: STATUS_QUE_OCUPAM_VAGA
+                }
+            });
+
+        if (disponibilidadeOcupada) {
+            return res.status(409).json({
+                message:
+                    "Esta disponibilidade já foi solicitada ou confirmada."
+            });
+        }
+
+        const medicoOcupado = await Agendamento.exists({
+            medicoId: medico._id,
+            dataHora: disponibilidade.inicio,
+            status: {
+                $in: STATUS_QUE_OCUPAM_VAGA
+            }
+        });
+
+        if (medicoOcupado) {
+            return res.status(409).json({
+                message:
+                    "O médico já possui um atendimento neste horário."
+            });
+        }
+
+        const pacienteOcupado = await Agendamento.exists({
+            pacienteId: paciente._id,
+            dataHora: disponibilidade.inicio,
+            status: {
+                $in: STATUS_QUE_OCUPAM_VAGA
+            }
+        });
+
+        if (pacienteOcupado) {
+            return res.status(409).json({
+                message:
+                    "O paciente já possui um atendimento neste horário."
+            });
+        }
+
+        const novoAgendamento = {
             pacienteId: paciente._id,
             medicoId: medico._id,
             instituicaoId: instituicao._id,
-            dataHora,
-            status: "agendada"
-        });
+            disponibilidadeId: disponibilidade._id,
+            dataHora: disponibilidade.inicio,
+            status: "pendente"
+        };
+
+        if (dados.motivo !== undefined) {
+            novoAgendamento.motivo = dados.motivo.trim();
+        }
+
+        if (dados.modalidade !== undefined) {
+            novoAgendamento.modalidade =
+                dados.modalidade.trim();
+        }
+
+        if (dados.plano !== undefined) {
+            novoAgendamento.plano = dados.plano.trim();
+        }
+
+        const agendamento = await Agendamento.create(
+            novoAgendamento
+        );
+
+        await agendamento.populate([
+            {
+                path: "pacienteId",
+                select: "nomeCompleto dataNascimento"
+            },
+            {
+                path: "medicoId",
+                select: "nomeCompleto especialidade"
+            },
+            {
+                path: "instituicaoId",
+                select: "nomePublico"
+            },
+            {
+                path: "disponibilidadeId",
+                select: "inicio fim ativo"
+            }
+        ]);
 
         return res.status(201).json({
-            message: "Consulta agendada com sucesso.",
+            message:
+                "Solicitação de agendamento criada com sucesso. Aguarde a confirmação da clínica.",
             agendamento
         });
 
@@ -134,7 +269,7 @@ async function criarAgendamento(req, res) {
         if (erro.code === 11000) {
             return res.status(409).json({
                 message:
-                    "O médico ou o paciente já possui uma consulta agendada nesse horário."
+                    "Este horário selecionado já foi reservado por outro agendamento."
             });
         }
 
@@ -143,43 +278,62 @@ async function criarAgendamento(req, res) {
             erro.name === "CastError"
         ) {
             return res.status(400).json({
-                message: "Os dados do agendamento são inválidos."
+                message:
+                    "Os dados do agendamento são inválidos."
             });
         }
 
         console.error("Erro ao criar agendamento.");
 
         return res.status(500).json({
-            message: "Não foi possível agendar a consulta."
+            message:
+                "Não foi possível criar a solicitação de agendamento."
         });
     }
 }
 
+
 async function listarMeusAgendamentos(req, res) {
     try {
-        const paciente = await Paciente.findOne({
-            usuarioId: req.usuario._id
+        const pacientes = await Paciente.find({
+            responsavelId: req.usuario._id
         }).select("_id");
 
-        if (!paciente) {
-            return res.status(404).json({
-                message:
-                    "Não existe cadastro de paciente vinculado a esta conta."
+        const idsPacientes = pacientes.map(
+            paciente => paciente._id
+        );
+
+        if (idsPacientes.length === 0) {
+            return res.status(200).json({
+                quantidade: 0,
+                agendamentos: []
             });
         }
 
         const agendamentos = await Agendamento.find({
-            pacienteId: paciente._id
+            pacienteId: {
+                $in: idsPacientes
+            }
         })
             .populate({
+                path: "pacienteId",
+                select: "nomeCompleto dataNascimento"
+            })
+            .populate({
                 path: "medicoId",
-                select: "nomeCompleto especialidade instituicaoId"
+                select: "nomeCompleto especialidade"
             })
             .populate({
                 path: "instituicaoId",
                 select: "nomePublico"
             })
-            .sort({ dataHora: 1 })
+            .populate({
+                path: "disponibilidadeId",
+                select: "inicio fim ativo"
+            })
+            .sort({
+                dataHora: 1
+            })
             .lean();
 
         return res.status(200).json({
@@ -188,10 +342,13 @@ async function listarMeusAgendamentos(req, res) {
         });
 
     } catch (erro) {
-        console.error("Erro ao listar agendamentos do paciente.");
+        console.error(
+            "Erro ao listar agendamentos do responsável."
+        );
 
         return res.status(500).json({
-            message: "Não foi possível listar os agendamentos."
+            message:
+                "Não foi possível listar os agendamentos."
         });
     }
 }

@@ -1,4 +1,3 @@
-
 const express = require("express");
 
 const authMiddleware = require("../middlewares/authMiddleware");
@@ -11,11 +10,13 @@ const {
 
 const router = express.Router();
 
+
 /**
  * @swagger
  * /api/agendamentos:
  *   post:
- *     summary: Agenda uma consulta para o paciente autenticado
+ *     summary: Solicita uma consulta para um paciente
+ *     description: O responsável seleciona um paciente vinculado à sua conta e uma disponibilidade publicada por um médico. A solicitação começa como pendente.
  *     tags:
  *       - Agendamentos
  *     security:
@@ -27,65 +28,73 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             required:
- *               - medicoId
- *               - dataHora
+ *               - pacienteId
+ *               - disponibilidadeId
  *             additionalProperties: false
  *             properties:
- *               medicoId:
+ *               pacienteId:
  *                 type: string
  *                 example: "507f1f77bcf86cd799439011"
- *               dataHora:
+ *               disponibilidadeId:
  *                 type: string
- *                 format: date-time
- *                 example: "2026-10-14T14:00:00-03:00"
+ *                 example: "507f1f77bcf86cd799439012"
+ *               motivo:
+ *                 type: string
+ *                 example: "Acompanhamento psicológico."
+ *               modalidade:
+ *                 type: string
+ *                 example: "Presencial"
+ *               plano:
+ *                 type: string
+ *                 example: "Particular"
  *     responses:
  *       201:
- *         description: Consulta agendada com sucesso
+ *         description: Solicitação criada com status pendente.
  *       400:
- *         description: Médico, data ou horário inválido
+ *         description: Dados inválidos ou paciente fora das modalidades aceitas.
  *       401:
- *         description: Token ausente, inválido ou expirado
+ *         description: Token ausente, inválido ou expirado.
  *       403:
- *         description: Somente pacientes podem agendar
+ *         description: Somente responsáveis podem solicitar consultas.
  *       404:
- *         description: Paciente, médico ou instituição não encontrado
+ *         description: Paciente, disponibilidade, médico ou instituição não encontrado.
  *       409:
- *         description: Médico inativo, instituição inativa ou conflito de horário
+ *         description: Vaga inativa, passada, ocupada ou conflito de horário.
  *       500:
- *         description: Erro interno do servidor
+ *         description: Erro interno do servidor.
  */
 router.post(
     "/",
     authMiddleware,
-    autorizarPerfis("paciente"),
+    autorizarPerfis("responsavel"),
     criarAgendamento
 );
+
 
 /**
  * @swagger
  * /api/agendamentos/meus:
  *   get:
- *     summary: Lista as consultas do paciente autenticado
+ *     summary: Lista os agendamentos dos pacientes do responsável
+ *     description: Retorna os agendamentos de todos os pacientes vinculados à conta autenticada.
  *     tags:
  *       - Agendamentos
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de agendamentos do próprio paciente
+ *         description: Lista de agendamentos retornada. Uma lista vazia é retornada quando não há consultas.
  *       401:
- *         description: Token ausente, inválido ou expirado
+ *         description: Token ausente, inválido ou expirado.
  *       403:
- *         description: Somente pacientes podem consultar esta rota
- *       404:
- *         description: Cadastro de paciente vinculado à conta não encontrado
+ *         description: Somente responsáveis podem consultar esta rota.
  *       500:
- *         description: Erro interno do servidor
+ *         description: Erro interno do servidor.
  */
 router.get(
     "/meus",
     authMiddleware,
-    autorizarPerfis("paciente"),
+    autorizarPerfis("responsavel"),
     listarMeusAgendamentos
 );
 
