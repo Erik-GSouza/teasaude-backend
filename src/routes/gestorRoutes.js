@@ -14,6 +14,8 @@ const {
 
 const router = express.Router();
 
+
+
 /**
  * @swagger
  * /api/gestores:
@@ -30,7 +32,7 @@ const router = express.Router();
  *         description: Informe true ou false. Outros valores retornam 400.
  *         schema:
  *           type: string
- *         example: "true"
+ *           example: "true"
  *     responses:
  *       200:
  *         description: Lista de gestores retornada com sucesso
@@ -50,52 +52,16 @@ router.get(
     listarGestores
 );
 
-/**
- * @swagger
- * /api/gestores/{id}:
- *   get:
- *     summary: Consulta um Gestor pelo ID
- *     tags:
- *       - Gestores
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: Identificador da conta de Gestor
- *         schema:
- *           type: string
- *         example: 6acd0358799d1d8d3f9971be
- *     responses:
- *       200:
- *         description: Gestor encontrado
- *       400:
- *         description: ID do gestor inválido
- *       401:
- *         description: Token inválido ou ausente, ou conta inativa
- *       403:
- *         description: Perfil sem permissão
- *       404:
- *         description: Gestor não encontrado
- *       500:
- *         description: Erro interno do servidor
- */
 
-router.get(
-    "/:id",
-    authMiddleware,
-    autorizarPerfis("admin"),
-    obterGestorPorId
-);
 
 /**
  * @swagger
  * /api/gestores:
  *   post:
  *     summary: Cria uma conta de Gestor
+ *     description: Permite que um Administrador crie uma conta Gestor vinculada a uma instituição ativa.
  *     tags:
- *        - Cadastro de Gestores
+ *       - Gestores
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -104,6 +70,7 @@ router.get(
  *         application/json:
  *           schema:
  *             type: object
+ *             additionalProperties: false
  *             required:
  *               - nomeUsuario
  *               - senha
@@ -118,6 +85,7 @@ router.get(
  *                 type: string
  *                 format: password
  *                 minLength: 8
+ *                 example: GestorTeaSaude2026!
  *               instituicaoId:
  *                 type: string
  *                 example: 6acc1e0db714754d0d7a6af6
@@ -137,7 +105,6 @@ router.get(
  *       500:
  *         description: Erro interno do servidor
  */
-
 router.post(
     "/",
     authMiddleware,
@@ -145,22 +112,64 @@ router.post(
     criarGestor
 );
 
+
 /**
  * @swagger
  * /api/gestores/{id}:
- *   patch:
- *     summary: Atualiza uma conta Gestor
- *     description: Permite que um Administrador autenticado atualize o nome de usuário, a instituição vinculada ou o status da conta Gestor.
- *     tags: [Gestores]
+ *   get:
+ *     summary: Consulta um Gestor pelo ID
+ *     tags:
+ *       - Gestores
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Identificador da conta de Gestor
  *         schema:
  *           type: string
+ *           example: 6acd0358799d1d8d3f9971be
+ *     responses:
+ *       200:
+ *         description: Gestor encontrado
+ *       400:
+ *         description: ID do gestor inválido
+ *       401:
+ *         description: Token inválido ou ausente, ou conta inativa
+ *       403:
+ *         description: Perfil sem permissão
+ *       404:
+ *         description: Gestor não encontrado
+ *       500:
+ *         description: Erro interno do servidor
+ */
+router.get(
+    "/:id",
+    authMiddleware,
+    autorizarPerfis("admin"),
+    obterGestorPorId
+);
+
+
+
+/**
+ * @swagger
+ * /api/gestores/{id}:
+ *   patch:
+ *     summary: Atualiza uma conta Gestor
+ *     description: Permite que um Administrador autenticado atualize o nome de usuário, a instituição vinculada ou o status da conta Gestor.
+ *     tags:
+ *       - Gestores
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
  *         description: ID da conta Gestor
+ *         schema:
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -203,22 +212,25 @@ router.patch(
     atualizarGestor
 );
 
+
+
 /**
  * @swagger
  * /api/gestores/{id}:
  *   delete:
  *     summary: Desativa uma conta Gestor
  *     description: Desativa logicamente uma conta Gestor, preservando seu registro no banco de dados. Se a conta já estiver desativada, retorna sucesso sem atualizá-la novamente.
- *     tags: [Gestores]
+ *     tags:
+ *       - Gestores
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
+ *         description: ID da conta Gestor
  *         schema:
  *           type: string
- *         description: ID da conta Gestor
  *     responses:
  *       200:
  *         description: Conta desativada ou já desativada
@@ -233,13 +245,11 @@ router.patch(
  *       500:
  *         description: Erro interno do servidor
  */
-
 router.delete(
     "/:id",
     authMiddleware,
     autorizarPerfis("admin"),
     desativarGestor
 );
-
 
 module.exports = router;

@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 
 const Paciente = require("../models/Paciente");
@@ -88,7 +87,8 @@ async function criarPaciente(req, res) {
         ) {
             return res.status(400).json({
                 success: false,
-                message: "Informe o nome completo e a data de nascimento."
+                message:
+                    "Informe o nome completo e a data de nascimento."
             });
         }
 
@@ -103,14 +103,14 @@ async function criarPaciente(req, res) {
         if (!menorDe18Anos(dados.dataNascimento)) {
             return res.status(400).json({
                 success: false,
-                message: "O paciente deve ter menos de 18 anos no cadastro inicial."
+                message:
+                    "O paciente deve ter menos de 18 anos no cadastro inicial."
             });
         }
 
         const paciente = await Paciente.create({
             nomeCompleto: dados.nomeCompleto.trim(),
             dataNascimento: converterData(dados.dataNascimento),
-
             responsavelId: req.usuario._id
         });
 
@@ -131,7 +131,7 @@ async function criarPaciente(req, res) {
             });
         }
 
-        console.error("Erro ao cadastrar paciente.");
+        console.error("Erro ao cadastrar paciente:", erro);
 
         return res.status(500).json({
             success: false,
@@ -139,6 +139,7 @@ async function criarPaciente(req, res) {
         });
     }
 }
+
 
 async function listarMeusPacientes(req, res) {
     try {
@@ -156,7 +157,10 @@ async function listarMeusPacientes(req, res) {
         });
 
     } catch (erro) {
-        console.error("Erro ao listar pacientes do responsável.");
+        console.error(
+            "Erro ao listar pacientes do responsável:",
+            erro
+        );
 
         return res.status(500).json({
             success: false,
@@ -164,6 +168,7 @@ async function listarMeusPacientes(req, res) {
         });
     }
 }
+
 
 async function buscarMeuPacientePorId(req, res) {
     try {
@@ -195,7 +200,7 @@ async function buscarMeuPacientePorId(req, res) {
             });
         }
 
-        console.error("Erro ao buscar paciente do responsável.");
+        console.error("Erro ao buscar paciente do responsável:", erro);
 
         return res.status(500).json({
             success: false,
@@ -203,6 +208,7 @@ async function buscarMeuPacientePorId(req, res) {
         });
     }
 }
+
 
 async function atualizarMeuPaciente(req, res) {
     try {
@@ -242,7 +248,8 @@ async function atualizarMeuPaciente(req, res) {
             ) {
                 return res.status(400).json({
                     success: false,
-                    message: "O nome deve ter pelo menos 3 caracteres."
+                    message:
+                        "O nome deve ter pelo menos 3 caracteres."
                 });
             }
 
@@ -300,7 +307,7 @@ async function atualizarMeuPaciente(req, res) {
             });
         }
 
-        console.error("Erro ao atualizar paciente.");
+        console.error("Erro ao atualizar paciente:", erro);
 
         return res.status(500).json({
             success: false,
@@ -308,6 +315,7 @@ async function atualizarMeuPaciente(req, res) {
         });
     }
 }
+
 
 async function listarPacientes(req, res) {
     try {
@@ -328,7 +336,7 @@ async function listarPacientes(req, res) {
         });
 
     } catch (erro) {
-        console.error("Erro ao listar pacientes.");
+        console.error("Erro ao listar pacientes:", erro);
 
         return res.status(500).json({
             success: false,
@@ -369,7 +377,7 @@ async function buscarPacientePorId(req, res) {
             });
         }
 
-        console.error("Erro ao buscar paciente.");
+        console.error("Erro ao buscar paciente:", erro);
 
         return res.status(500).json({
             success: false,
@@ -377,6 +385,7 @@ async function buscarPacientePorId(req, res) {
         });
     }
 }
+
 
 async function atualizarPaciente(req, res) {
     try {
@@ -416,7 +425,8 @@ async function atualizarPaciente(req, res) {
             ) {
                 return res.status(400).json({
                     success: false,
-                    message: "O nome deve ter pelo menos 3 caracteres."
+                    message:
+                        "O nome deve ter pelo menos 3 caracteres."
                 });
             }
 
@@ -471,7 +481,7 @@ async function atualizarPaciente(req, res) {
             });
         }
 
-        console.error("Erro ao atualizar paciente.");
+        console.error("Erro ao atualizar paciente:", erro);
 
         return res.status(500).json({
             success: false,
@@ -479,6 +489,7 @@ async function atualizarPaciente(req, res) {
         });
     }
 }
+
 
 
 async function deletarPaciente(req, res) {
@@ -525,7 +536,7 @@ async function deletarPaciente(req, res) {
             });
         }
 
-        console.error("Erro ao remover paciente.");
+        console.error("Erro ao remover paciente:", erro);
 
         return res.status(500).json({
             success: false,
